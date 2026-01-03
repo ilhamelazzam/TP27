@@ -41,6 +41,7 @@ echo "Ports=$(IFS=','; echo \"${PORTS[*]}\")"
 echo "Concurrency=$CONCURRENCY"
 echo
 
+start_ts=$(date +%s)
 tmpdir="$(mktemp -d)"
 success_file="$tmpdir/success.txt"
 conflict_file="$tmpdir/conflict.txt"
@@ -83,10 +84,17 @@ for p in "${pids[@]}"; do
   wait "$p"
 done
 
+end_ts=$(date +%s)
+duration=$((end_ts - start_ts))
+# Avoid division by zero; if <1s, normalize to 1 for rate computation.
+norm_duration=$((duration > 0 ? duration : 1))
+rate=$(awk "BEGIN {printf \"%.2f\", $REQUESTS/$norm_duration}")
+
 echo "== Results =="
 echo "Success (200):  $(wc -l < "$success_file")"
 echo "Conflict (409): $(wc -l < "$conflict_file")"
 echo "Other:          $(wc -l < "$other_file")"
+echo "Duration:       ${duration}s (approx ${rate} req/s)"
 echo
 echo "Results by port:"
 for port in "${PORTS[@]}"; do

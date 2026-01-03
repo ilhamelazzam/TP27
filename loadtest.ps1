@@ -5,6 +5,8 @@ param(
   [int[]]$Ports = @(8081, 8083, 8084)
 )
 
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
 if ($BookId -lt 0) {
   Write-Error "Book id must be a positive integer"
   exit 1
@@ -68,14 +70,18 @@ if ($jobs.Count -gt 0) {
   $jobs | Remove-Job
 }
 
+$stopwatch.Stop()
 $success  = ($results | Where-Object { $_.Status -eq 200 }).Count
 $conflict = ($results | Where-Object { $_.Status -eq 409 }).Count
 $other    = $Requests - $success - $conflict
+$durationSeconds = [math]::Max(1, [math]::Ceiling($stopwatch.Elapsed.TotalSeconds))
+$rate = [math]::Round($Requests / $durationSeconds, 2)
 
 Write-Host "== Results =="
 Write-Host "Success (200):  $success"
 Write-Host "Conflict (409): $conflict"
 Write-Host "Other:          $other"
+Write-Host "Duration:       $($stopwatch.Elapsed.TotalSeconds.ToString('0.###'))s (approx $rate req/s)"
 Write-Host ""
 Write-Host "Results by port:"
 
